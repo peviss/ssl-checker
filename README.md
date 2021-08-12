@@ -22,7 +22,7 @@ One of the good things about this script is that it will fully analyze the SSL c
 ```
 ./ssl_checker.py -h
 usage: ssl_checker.py (-H [HOSTS [HOSTS ...]] | -f HOST_FILE) [-s HOST:PORT]
-                      [-c FILENAME.CSV] [-j] [-S] [-x] [-J] [-a] [-v] [-h]
+                      [-c FILENAME.CSV] [-xl FILENAME.XSLX] [-j] [-S] [-x] [-J] [-a] [-v] [-h]
 
 Collects useful information about given host's SSL certificates.
 
@@ -41,7 +41,9 @@ optional arguments:
   -J, --json-save       Enable JSON export individually per host
   -a, --analyze         Enable SSL security analysis on the host
   -v, --verbose         Enable verbose to see what is going on
+  -xl --xlsx	        Enable XLSX file export
   -h, --help            Show this help message and exit
+
 ```
 
 
@@ -55,6 +57,8 @@ Port is optional here. The script will use 443 if not specified.
 `-s, --socks ` Enable connection through SOCKS server
 
 `-c, --csv ` Enable CSV file export by specifying filename.csv after this argument
+
+`-xl, --xlsx ` Enable XLSX file export by specifying filename.xlsx after this argument
 
 `-j, --json ` Use this if you want to only have the result in JSON
 

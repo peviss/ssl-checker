@@ -8,6 +8,7 @@ from datetime import datetime
 from ssl import PROTOCOL_TLSv1
 from time import sleep
 from csv import DictWriter
+import pandas as pd
 
 try:
     from OpenSSL import SSL
@@ -38,14 +39,14 @@ class SSLChecker:
         if user_args.socks:
             import socks
             if user_args.verbose:
-                print('{}Socks proxy enabled{}\n'.format(Clr.YELLOW, Clr.RST))
+                print('Socks proxy enabled\n')
 
             socks_host, socks_port = self.filter_hostname(user_args.socks)
             socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, socks_host, int(socks_port), True)
             socket.socket = socks.socksocket
 
         if user_args.verbose:
-            print('{}Connecting to socket{}\n'.format(Clr.YELLOW, Clr.RST))
+            print('Connecting to socket\n')
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         osobj = SSL.Context(PROTOCOL_TLSv1)
@@ -57,7 +58,7 @@ class SSLChecker:
         cert = oscon.get_peer_certificate()
         sock.close()
         if user_args.verbose:
-            print('{}Closing socket{}\n'.format(Clr.YELLOW, Clr.RST))
+            print('Closing socket\n')
 
         return cert
 
@@ -78,18 +79,18 @@ class SSLChecker:
         api_url = 'https://api.ssllabs.com/api/v3/'
         while True:
             if user_args.verbose:
-                print('{}Requesting analyze to {}{}\n'.format(Clr.YELLOW, api_url, Clr.RST))
+                print('Requesting analyze to {}\n'.format(api_url))
 
             main_request = json.loads(urlopen(api_url + 'analyze?host={}'.format(host)).read().decode('utf-8'))
             if main_request['status'] in ('DNS', 'IN_PROGRESS'):
                 if user_args.verbose:
-                    print('{}Analyze waiting for reports to be finished (5 secs){}\n'.format(Clr.YELLOW, Clr.RST))
+                    print('Analyze waiting for reports to be finished (5 secs)\n')
 
                 sleep(5)
                 continue
             elif main_request['status'] == 'READY':
                 if user_args.verbose:
-                    print('{}Analyze is ready{}\n'.format(Clr.YELLOW, Clr.RST))
+                    print('Analyze is ready\n')
 
                 break
 
@@ -97,7 +98,7 @@ class SSLChecker:
             host, main_request['endpoints'][0]['ipAddress'])).read().decode('utf-8'))
 
         if user_args.verbose:
-            print('{}Analyze report message: {}{}\n'.format(Clr.YELLOW, endpoint_data['statusMessage'], Clr.RST))
+            print('Analyze report message: {}\n'.format(endpoint_data['statusMessage']))
 
         # if the certificate is invalid
         if endpoint_data['statusMessage'] == 'Certificate not valid for domain name':
@@ -183,7 +184,7 @@ class SSLChecker:
 
     def print_status(self, host, context, analyze=False):
         """Print all the usefull info about host."""
-        print('\t{}[+]{} {}\n\t{}'.format(Clr.GREEN, Clr.RST, host, '-' * (len(host) + 5)))
+        print('\t{}\n\t{}'.format(host, '-' * (len(host) + 5)))
         print('\t\tIssued domain: {}'.format(context[host]['issued_to']))
         print('\t\tIssued to: {}'.format(context[host]['issued_o']))
         print('\t\tIssued by: {} ({})'.format(context[host]['issuer_o'], context[host]['issuer_c']))
@@ -223,11 +224,11 @@ class SSLChecker:
             self.border_msg(' Analyzing {} host(s) '.format(len(hosts)))
 
         if not user_args.json_true and user_args.analyze:
-            print('{}Warning: -a/--analyze is enabled. It takes more time...{}\n'.format(Clr.YELLOW, Clr.RST))
+            print('Warning: -a/--analyze is enabled. It takes more time...\n')
 
         for host in hosts:
             if user_args.verbose:
-                print('{}Working on host: {}{}\n'.format(Clr.YELLOW, host, Clr.RST))
+                print('Working on host: {}\n'.format(host))
 
             host, port = self.filter_hostname(host)
 
@@ -248,14 +249,14 @@ class SSLChecker:
                     self.print_status(host, context, user_args.analyze)
             except SSL.SysCallError:
                 if not user_args.json_true:
-                    print('\t{}[-]{} {:<20s} Failed: Misconfigured SSL/TLS\n'.format(Clr.RED, Clr.RST, host))
+                    print('\t[-] {:<20s} Failed: Misconfigured SSL/TLS\n'.format(host))
                     self.total_failed += 1
             except Exception as error:
                 if not user_args.json_true:
-                    print('\t{}[-]{} {:<20s} Failed: {}\n'.format(Clr.RED, Clr.RST, host, error))
+                    print('\t[-] {:<20s} Failed: {}\n'.format(host, error))
                     self.total_failed += 1
             except KeyboardInterrupt:
-                print('{}Canceling script...{}\n'.format(Clr.YELLOW, Clr.RST))
+                print('Canceling script...\n')
                 sys.exit(1)
 
         if not user_args.json_true:
@@ -269,6 +270,10 @@ class SSLChecker:
         # CSV export if -c/--csv is specified
         if user_args.csv_enabled:
             self.export_csv(context, user_args.csv_enabled, user_args)
+
+        # XLSX export if -x/--xlsx is specified
+        if user_args.xlsx_enabled:
+            self.export_xlsx(context, user_args.xlsx_enabled, user_args)
 
         # HTML export if -x/--html is specified
         if user_args.html_true:
@@ -291,7 +296,7 @@ class SSLChecker:
         """Export all context results to CSV file."""
         # prepend dict keys to write column headers
         if user_args.verbose:
-            print('{}Generating CSV export{}\n'.format(Clr.YELLOW, Clr.RST))
+            print('Generating CSV export\n')
 
         with open(filename, 'w') as csv_file:
             csv_writer = DictWriter(csv_file, list(context.items())[0][1].keys())
@@ -307,6 +312,28 @@ class SSLChecker:
             html_file.write(html)
 
         return
+    
+    def export_xlsx(self, context, filename, user_args):
+        """Export all context results to Excel file. By @peviss"""
+        if user_args.verbose:
+            print('Generating XSLX export\n')
+        data = {}
+        for host in context.keys():
+            days_left = 0
+            days_expired=0
+            if context[host]["days_left"]>0:
+                days_left = context[host]["days_left"]
+            else:
+                days_expired=context[host]["days_left"]
+                
+            data[host] = {
+                "valid_from" : context[host]["valid_from"],
+                "valid_till" : context[host]["valid_till"],
+                "days_left" : days_left,
+                "days_expired" : days_expired*-1
+            }
+        df = pd.DataFrame(data)
+        df.transpose().to_excel('{}.xlsx'.format(filename))
 
     def filter_hostname(self, host):
         """Remove unused characters and split by address and port."""
@@ -327,6 +354,7 @@ class SSLChecker:
             setattr(args, 'json_true', True)
             setattr(args, 'verbose', False)
             setattr(args, 'csv_enabled', False)
+            setattr(args, 'xlsx_enabled', False)
             setattr(args, 'html_true', False)
             setattr(args, 'json_save_true', False)
             setattr(args, 'socks', False)
@@ -345,6 +373,9 @@ class SSLChecker:
         parser.add_argument('-c', '--csv', dest='csv_enabled',
                             default=False, metavar='FILENAME.CSV',
                             help='Enable CSV file export')
+        parser.add_argument('-xl', '--xlsx', dest='xlsx_enabled',
+                            default=False, metavar='FILENAME.XLSX',
+                            help='Enable XLSX file export')
         parser.add_argument('-j', '--json', dest='json_true',
                             action='store_true', default=False,
                             help='Enable JSON in the output')

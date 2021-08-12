@@ -316,7 +316,7 @@ class SSLChecker:
     def export_xlsx(self, context, filename, user_args):
         """Export all context results to Excel file. By @peviss"""
         if user_args.verbose:
-            print('Generating XSLX export\n')
+            print('Generating XLSX export\n')
         data = {}
         for host in context.keys():
             days_left = 0

@@ -22,7 +22,7 @@ One of the good things about this script is that it will fully analyze the SSL c
 ```
 ./ssl_checker.py -h
 usage: ssl_checker.py (-H [HOSTS [HOSTS ...]] | -f HOST_FILE) [-s HOST:PORT]
-                      [-c FILENAME.CSV] [-xl FILENAME.XSLX] [-j] [-S] [-x] [-J] [-a] [-v] [-h]
+                      [-c FILENAME.CSV] [-xl FILENAME.XLSX] [-j] [-S] [-x] [-J] [-a] [-v] [-h]
 
 Collects useful information about given host's SSL certificates.
 
